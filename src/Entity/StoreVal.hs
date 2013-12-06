@@ -26,8 +26,9 @@ data StoreVal = StoreByteString B.ByteString
               | StoreLocalTime LocalTime
               | StoreTimeZone TimeZone
               | StoreDay Day
+              | StoreList [StoreVal]
               | StoreNil
-              deriving (Data, Typeable)
+              deriving (Data, Typeable, Eq)
 
 instance Show StoreVal where
     show (StoreByteString x) = show $ B.unpack x
@@ -56,6 +57,7 @@ instance Convertible StoreVal B.ByteString where
     safeConvert (StoreLocalTime x)  = return $ C.pack $ show x
     safeConvert (StoreTimeZone x)   = return $ C.pack $ show $
                                       timeZoneMinutes x
+    safeConvert (StoreList xs)      = return $ C.pack $ show xs
     safeConvert StoreNil            = return ""
 
 
@@ -105,11 +107,11 @@ instance Convertible StoreVal Double where
     safeConvert (StoreUTCTime x) =
         return $ fromRational $ toRational $ utcTimeToPOSIXSeconds x
     safeConvert (StoreDay x) =
-        return $ fromRational $ toRational $ toModifiedJulianDay x
+        return $ fromInteger $ toModifiedJulianDay x
     safeConvert inp@(StoreByteString x) = case readMay (C.unpack x) of
         Nothing -> convError "Couldn't Convert Storeval to Double" inp
         Just x' -> return x'
-    safeConvert x = convError "Couldn't Convert Storeval to Double" x
+    safeConvert x = convError ("It's Type: " ++ show (typeOf x)) x
 
 instance Convertible Double StoreVal where
     safeConvert = return . StoreDouble
@@ -130,7 +132,6 @@ instance Convertible Int StoreVal where
 instance (Convertible C.ByteString a, Convertible StoreVal a, Typeable a)
          => Convertible StoreVal (Maybe a) where
     -- safeConvert (StoreInt x) =  Just `fmap` safeConvert x
-    safeConvert (StoreInt x) = undefined
     safeConvert StoreNil = return Nothing
     safeConvert (StoreByteString x) =
         if "" == x
@@ -215,6 +216,16 @@ instance Convertible StoreVal LocalTime where
         Just r -> return r
         Nothing -> convError "ByteString to LocalTime Error: " inp
 
+
+instance Convertible (Key a) StoreVal => Convertible [Key a] StoreVal where
+    safeConvert xs = return $ StoreList $ map toStore xs
+
+
+instance Typeable a => Convertible StoreVal [Key a] where
+    safeConvert (StoreList xs) = return $ map (Key . fromStore) xs
+    safeConvert inp@(StoreByteString x) = case readMay (C.unpack x) of
+        Just r -> return $ map Key r
+        Nothing -> convError "ByteString to [Key a] Error" inp
 
 toStore :: Convertible a StoreVal => a -> StoreVal
 toStore = convert

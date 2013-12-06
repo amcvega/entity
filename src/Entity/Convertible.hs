@@ -3,7 +3,7 @@ module Entity.Convertible where
 
 import Data.Data (Typeable)
 import Safe (readMay)
-import Data.Time (UTCTime, Day, TimeZone)
+import Data.Time (UTCTime, Day, TimeZone, toModifiedJulianDay)
 import Data.Convertible
 import Data.Text.Encoding ( decodeUtf8)
 
@@ -67,3 +67,10 @@ instance Convertible Int T.Text where
 
 instance Convertible C.ByteString Int where
     safeConvert x = read $ C.unpack x
+
+instance Convertible Day Double where
+    safeConvert x = return $ fromRational $ toRational $ toModifiedJulianDay x
+
+
+instance Convertible Day Integer where
+    safeConvert x = return $ toModifiedJulianDay x

@@ -5,11 +5,7 @@ module Entity.Core
        ( Storeable(..)
        , MetaStore(..)
        , Field(..)
-       , Filter(..)
-       , Limit(..)
        , FieldDef(..)
-       , Direction(..)
-       , Sort(..)
        , storeLookup'
        , storeLookup
        , provide
@@ -20,7 +16,6 @@ module Entity.Core
        , listNewFields
        , listChanges
        , toEntity
-       , (.=)
        )
        where
 
@@ -136,19 +131,6 @@ data Filter a where
                  => StoreField a b -> b -> Filter a
 
 
-(.=) :: (Storeable a, Convertible b StoreVal)
-        => StoreField a b -> b -> Filter a
-x .= y = Filter x y
-
-
-data Direction = Asc | Desc
-
-data Limit = Limit Integer Integer
-           | NoLimit
-
-data Sort a where
-    Sort :: (Storeable a, Convertible b StoreVal)
-            => Direction -> (StoreField a b) -> Sort a
 
 newtype FieldDef = FieldDef { fieldName :: String}
 

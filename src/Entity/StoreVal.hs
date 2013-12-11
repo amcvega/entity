@@ -129,7 +129,8 @@ instance Convertible StoreVal Int where
 instance Convertible Int StoreVal where
     safeConvert = return . StoreInt
 
-instance (Convertible C.ByteString a, Convertible StoreVal a, Typeable a)
+instance (Convertible C.ByteString a, Convertible StoreVal a, Convertible T.Text a,
+          Typeable a)
          => Convertible StoreVal (Maybe a) where
     -- safeConvert (StoreInt x) =  Just `fmap` safeConvert x
     safeConvert StoreNil = return Nothing
@@ -137,6 +138,7 @@ instance (Convertible C.ByteString a, Convertible StoreVal a, Typeable a)
         if "" == x
         then return Nothing
         else Just `fmap` safeConvert x
+    safeConvert (StoreText x) = Just `fmap` safeConvert x
     safeConvert x = convError "WTF!?!?" x
         -- else case readMay (C.unpack x) :: Maybe Int of
         --     Just r -> Just `fmap` safeConvert r
@@ -209,6 +211,9 @@ instance Convertible StoreVal TimeZone where
 
 instance Convertible LocalTime StoreVal where
     safeConvert = return . StoreLocalTime
+
+instance Convertible LocalTime T.Text where
+    safeConvert = return . T.pack . show
 
 instance Convertible StoreVal LocalTime where
     safeConvert (StoreLocalTime x) = return x

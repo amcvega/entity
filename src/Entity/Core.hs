@@ -1,11 +1,13 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleContexts, TypeFamilies
-           , RankNTypes, GADTs, DefaultSignatures #-}
+           , RankNTypes, GADTs, DefaultSignatures
+           , GeneralizedNewtypeDeriving #-}
 
 module Entity.Core
        ( Storeable(..)
        , MetaStore(..)
        , Field(..)
        , FieldDef(..)
+       , FieldList(..)
        , storeLookup'
        , storeLookup
        , provide
@@ -19,6 +21,7 @@ module Entity.Core
        )
        where
 
+import Data.Monoid
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Time (UTCTime, TimeZone, Day)
@@ -31,16 +34,6 @@ import Entity.Definition
 import Data.Convertible
 import Data.Maybe (fromMaybe)
 import qualified Data.Map.Strict as Map
-
--- class Redisable a where
---     toRedis :: a -> [(ByteString, ByteString)]
-
-
--- instance (Storeable a) => Redisable (Entity a) where
---     toRedis x = getVals
---         where
---             getVals = map bsPairs $ toList $ eVal x
---             bsPairs (k,v) = (B.pack k, fromStore v)
 
 
 toEntity :: (Storeable a) => Int -> a -> Entity a
@@ -61,6 +54,10 @@ class MetaStore a where
 
 instance MetaStore a => MetaStore (Entity a) where
     storeName ent = storeName (eVal ent)
+
+
+newtype FieldList a = FieldList { fieldList :: [(Field a, StoreVal)] }
+                      deriving (Monoid)
 
 
 class (Typeable a, MetaStore a) => Storeable a where
@@ -85,19 +82,20 @@ class (Typeable a, MetaStore a) => Storeable a where
     sorted _ = []
 
     -- | List of unique indices
-    uniqueVals :: a -> [(String, StoreVal)]
-    uniqueVals f = map genvals $ uniques f
-        where genvals (Field name) = (fieldOf name, toStore $ fieldAttr name f)
+    uniqueVals :: a -> FieldList a
+    uniqueVals f = FieldList $ map genvals $ uniques f
+        where genvals fld@(Field name) = (fld, toStore $ fieldAttr name f)
+        -- where genvals (Field name) = (fieldOf name, toStore $ fieldAttr name f)
 
     -- | List of regular indices
-    indexVals :: a -> [(String, StoreVal)]
-    indexVals f = map genvals $ indices f
-        where genvals (Field name) = (fieldOf name, toStore $ fieldAttr name f)
+    indexVals :: a -> FieldList a
+    indexVals f = FieldList $ map genvals $ indices f
+        where genvals fld@(Field name) = (fld, toStore $ fieldAttr name f)
 
     -- | Convert a record into a list of storevals for the db
-    toList :: a -> [(String, StoreVal)]
-    toList f = map genvals $ storeFields f
-        where genvals (Field name) = (fieldOf name, toStore $ fieldAttr name f)
+    toList :: a -> FieldList a
+    toList f = FieldList $ map genvals $ storeFields f
+        where genvals fld@(Field name) = (fld, toStore $ fieldAttr name f)
 
 
     listToStoreable :: [(String, StoreVal)] -> Either String a
@@ -121,15 +119,18 @@ sortedIndexVals f = map genvals $ sorted f
 fieldStore :: Storeable a => StoreField a b -> a
 fieldStore = undefined
 
+
 -- | Wraper for StoreFields to allow them to be put into a list.
 data Field a where
     Field :: (Eq b, Convertible b Text, Show b, Convertible b StoreVal)
              => StoreField a b -> Field a
+    KeyField :: Field a
 
-data Filter a where
-    Filter :: (Storeable a, Convertible b StoreVal)
-                 => StoreField a b -> b -> Filter a
-
+data Sorted a where
+    Sorted :: (Eq b
+              , Show b, Convertible b StoreVal
+              , Convertible b Double)
+             => StoreField a b -> Sorted a
 
 
 newtype FieldDef = FieldDef { fieldName :: String}

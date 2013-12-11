@@ -21,12 +21,15 @@ x .= y = Filter x y
 
 data Direction = Asc | Desc
 
-data Limit = Limit Integer Integer
+
+type Offset = Integer
+type LimitQty = Integer
+data Limit = Limit Offset LimitQty
            | NoLimit
 
 data Sort a where
     Sort :: (Storeable a, Convertible b StoreVal)
-            => Direction -> (StoreField a b) -> Sort a
+            => Direction -> StoreField a b -> Sort a
 
 
 data ResultType = ResultAll | ResultCount

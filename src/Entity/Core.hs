@@ -8,13 +8,14 @@ module Entity.Core
        , Field(..)
        , FieldDef(..)
        , FieldList(..)
+       , Sorted(..)
        , storeLookup'
        , storeLookup
        , provide
        , fieldStore
        , fieldOf
        , sortedIndexVals
-       , redisToEntity
+       -- , redisToEntity
        , listNewFields
        , listChanges
        , toEntity
@@ -39,13 +40,6 @@ import qualified Data.Map.Strict as Map
 toEntity :: (Storeable a) => Int -> a -> Entity a
 toEntity kid record = Entity (Key kid) record
 
-redisToEntity :: Storeable a
-              => Key a
-              -> [(ByteString, ByteString)]
-              -> Either String (Entity a)
-redisToEntity kid vals = Entity kid `fmap` (listToStoreable $ map unbsPairs vals)
-    where
-        unbsPairs (k,v) = (B.unpack k, toStore v)
 
 class MetaStore a where
     storeName :: a -> String
@@ -78,7 +72,7 @@ class (Typeable a, MetaStore a) => Storeable a where
     indices :: a -> [Field a]
     indices _ = []
 
-    sorted :: a -> [Field a]
+    sorted :: a -> [Sorted a]
     sorted _ = []
 
     -- | List of unique indices
@@ -112,7 +106,7 @@ class (Typeable a, MetaStore a) => Storeable a where
 
 sortedIndexVals :: Storeable a => a -> [(String, StoreVal)]
 sortedIndexVals f = map genvals $ sorted f
-    where genvals (Field name) = (fieldOf name, toStore $ fieldAttr name f)
+    where genvals (Sorted name) = (fieldOf name, toStore $ fieldAttr name f)
 
 
 -- | Trick to return the type of the  store of a storefield

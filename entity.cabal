@@ -30,3 +30,4 @@ library
                      , Entity.StoreVal
                      , Entity.Definition
                      , Entity.Query
+                     , Entity.Common

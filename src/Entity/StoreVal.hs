@@ -129,7 +129,7 @@ instance Convertible StoreVal Int where
 instance Convertible Int StoreVal where
     safeConvert = return . StoreInt
 
-instance (Convertible C.ByteString a, Convertible StoreVal a, Convertible T.Text a,
+instance (Convertible C.ByteString a, Convertible StoreVal a,
           Typeable a)
          => Convertible StoreVal (Maybe a) where
     -- safeConvert (StoreInt x) =  Just `fmap` safeConvert x
@@ -138,7 +138,7 @@ instance (Convertible C.ByteString a, Convertible StoreVal a, Convertible T.Text
         if "" == x
         then return Nothing
         else Just `fmap` safeConvert x
-    safeConvert (StoreText x) = Just `fmap` safeConvert x
+    safeConvert (StoreText x) = Just `fmap` safeConvert (encodeUtf8 x)
     safeConvert x = convError "WTF!?!?" x
         -- else case readMay (C.unpack x) :: Maybe Int of
         --     Just r -> Just `fmap` safeConvert r
@@ -231,6 +231,12 @@ instance Typeable a => Convertible StoreVal [Key a] where
     safeConvert inp@(StoreByteString x) = case readMay (C.unpack x) of
         Just r -> return $ map Key r
         Nothing -> convError "ByteString to [Key a] Error" inp
+
+
+instance Convertible T.Text Bool where
+    safeConvert "True" = return True
+    safeConvert "False" = return False
+    safeConvert x = convError "Text to Bool error" x
 
 toStore :: Convertible a StoreVal => a -> StoreVal
 toStore = convert

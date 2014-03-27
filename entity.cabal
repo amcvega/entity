@@ -23,6 +23,7 @@ library
                      , time == 1.4.*
                      , safe == 0.3.*
                      , containers == 0.5.*
+                     , aeson == 0.*
 
   exposed-modules:     Entity
   other-modules:       Entity.Core

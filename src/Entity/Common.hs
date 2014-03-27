@@ -10,7 +10,7 @@ import Entity.StoreVal
 
 
 data CommonI a where
-    FindRecord :: (Storeable a) => Key a -> CommonI (Entity a)
+    FindRecord :: (Storeable a) => Key a -> CommonI (Maybe (Entity a))
     FindRecordsByIndex :: (Storeable a, Convertible val StoreVal)
                           => StoreField a val -> val -> CommonI [Entity a]
     CreateRecord :: (Storeable a) => a -> CommonI (Key a)
@@ -22,4 +22,5 @@ data CommonI a where
                       => [Filter a] -> [Filter a] -> CommonI [Entity a]
     FilterQuery :: (Storeable a) => SimpleQuery a -> CommonI (QueryResult a)
     FindRecordByUnique :: (Storeable a, Convertible val StoreVal)
-                          => StoreField a val -> val -> CommonI (Entity a)
+                          => StoreField a val
+                          -> val -> CommonI (Maybe (Entity a))

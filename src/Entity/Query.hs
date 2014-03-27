@@ -35,7 +35,7 @@ data Sort a where
 data ResultType = ResultAll | ResultCount
 
 data QueryResult a = Count Int
-                   | Entries [Entity a]
+                   | Entries { entries :: [Entity a] }
 
 data SimpleQuery a = SimpleQuery
              { qResult    :: ResultType

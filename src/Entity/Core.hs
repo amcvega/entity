@@ -116,7 +116,7 @@ fieldStore = undefined
 
 -- | Wraper for StoreFields to allow them to be put into a list.
 data Field a where
-    Field :: (Eq b, Convertible b Text, Show b, Convertible b StoreVal)
+    Field :: (Eq b, Typeable b, Show b, Convertible b StoreVal)
              => StoreField a b -> Field a
     KeyField :: Field a
 
@@ -143,14 +143,14 @@ storeLookup k xs = fromStore `fmap` lookup k xs
 
 -- |Use a StoreField to lookup values from "db"
 storeLookup' :: (Convertible StoreVal b, Storeable a)
-                => StoreField a typ -> Map.Map String StoreVal -> Maybe b
+                => StoreField a b -> Map.Map String StoreVal -> Maybe b
 storeLookup' k xs = fromStore `fmap` Map.lookup (fieldOf k) xs
 
 
 -- | Wrapper around storeLookup' functionality.  Provides default
 --   value if lookup for a particular field fails (doesn't exist in db)
 provide :: (Convertible StoreVal b
-           , Convertible ByteString b
+           -- , Convertible ByteString b
            , Storeable a, Typeable b)
            => b -> StoreField a b -> Map.Map String StoreVal -> Maybe b
 provide def sf xs =
@@ -173,4 +173,6 @@ listChanges old new = foldr appendDifference [] (storeFields old)
                 newval = fieldAttr field new
             in if oldval == newval
                then acc
-               else (fieldOf field, convert oldval, convert newval) : acc
+               else
+                   (fieldOf field, T.pack $ show oldval, T.pack $ show newval)
+                   : acc

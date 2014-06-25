@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                entity
-version:             0.1.0.0
+version:             0.2.0.0
 -- synopsis:            
 -- description:         
 license:             MIT
@@ -16,11 +16,11 @@ cabal-version:       >=1.8
 
 library
   hs-source-dirs:      src
-  build-depends:       base == 4.6.*
-                     , text == 0.11.*
+  build-depends:       base
+                     , text == 1.1.*
                      , bytestring == 0.10.*
                      , convertible == 1.*
-                     , time == 1.4.*
+                     , time == 1.*
                      , safe == 0.3.*
                      , containers == 0.5.*
                      , aeson == 0.*

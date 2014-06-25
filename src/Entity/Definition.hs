@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 module Entity.Definition where
 
+import Data.Functor
 import Data.Data
 
 newtype Key a = Key { unKey :: Int }

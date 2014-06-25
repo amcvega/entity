@@ -139,6 +139,7 @@ instance Convertible StoreVal Int where
         Nothing -> convError "Couldn't Convert StoreVal to Int" inp
         where
             mint = C.readInt x
+    safeConvert z = convError ("Couldn't handle case " ++ show z) z
 
 
 instance Convertible Int StoreVal where
@@ -160,7 +161,8 @@ instance (Convertible StoreVal a, Read a,
         return $ readMay $ show x
     safeConvert inp@(StoreDay x) = Just `fmap` safeConvert inp
     safeConvert inp@(StoreJSON x) = Just `fmap` safeConvert inp
-    safeConvert x = convError "WTF!?!?" x
+    safeConvert inp@(StoreUTCTime x) = Just `fmap` safeConvert inp
+    safeConvert x = convError "Can't Handle Storeval to Maybe" x
 
 
 instance (Convertible a StoreVal) => Convertible (Maybe a) StoreVal where
@@ -244,6 +246,18 @@ instance Convertible (Key a) StoreVal => Convertible [Key a] StoreVal where
     safeConvert xs = return $ StoreList $ map toStore xs
 
 
+instance Convertible Value StoreVal where
+    safeConvert = return . StoreJSON
+
+
+instance Convertible StoreVal Value where
+    safeConvert x = case x of
+        StoreJSON v -> return v
+        StoreByteString v -> case decode $ BL.fromStrict v of
+            Just r -> return r
+            Nothing -> convError "Couldn't convert Bytestring to JSON values" x
+
+
 instance Typeable a => Convertible StoreVal [Key a] where
     safeConvert (StoreList xs) = return $ map (Key . fromStore) xs
     safeConvert inp@(StoreByteString x) = case readMay (C.unpack x) of
@@ -255,6 +269,8 @@ instance Convertible T.Text Bool where
     safeConvert "True" = return True
     safeConvert "False" = return False
     safeConvert x = convError "Text to Bool error" x
+
+
 
 toStore :: Convertible a StoreVal => a -> StoreVal
 toStore = convert

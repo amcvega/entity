@@ -12,11 +12,18 @@ data Filter a where
                  => StoreField a b -> b -> Filter a
     RangeFilter :: (Storeable a, Convertible b StoreVal, Convertible b Double)
                    => StoreField a b -> b -> b -> Filter a
+    IncludeFilter :: (Storeable a, Convertible b StoreVal)
+                     => StoreField a b -> [b] -> Filter a
 
 
 (.=) :: (Storeable a, Convertible b StoreVal)
         => StoreField a b -> b -> Filter a
 x .= y = Filter x y
+
+
+(.?) :: (Storeable a, Convertible b StoreVal)
+        => StoreField a b -> [b] -> Filter a
+x .? y = IncludeFilter x y
 
 
 data Direction = Asc | Desc
@@ -32,9 +39,10 @@ data Sort a where
             => Direction -> StoreField a b -> Sort a
 
 
-data ResultType = ResultAll | ResultCount
+data ResultType = ResultAll | ResultKeys | ResultCount
 
 data QueryResult a = Count Int
+                   | Keys { ekeys :: [Key a]}
                    | Entries { entries :: [Entity a] }
 
 data SimpleQuery a = SimpleQuery

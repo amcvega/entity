@@ -92,5 +92,5 @@ instance Convertible Day Int where
 
 instance Convertible (Maybe UTCTime) Double where
     safeConvert Nothing = return 999999999999999999999
-    safeConvert (Just x) = return $
-                           (fromRational . toRational . utcTimeToPOSIXSeconds) x
+    safeConvert (Just x) =
+        return $ fromRational . toRational . utcTimeToPOSIXSeconds $ x

@@ -61,7 +61,6 @@ class (Typeable a, MetaStore a) => Storeable a where
     fieldAttr :: StoreField a typ -> (a -> typ)
 
     assemble :: Map.Map String StoreVal -> Maybe a
-    -- assemble :: [(String, StoreVal)] -> Maybe a
 
     storeFields :: a -> [Field a]
     storeFields _ = []

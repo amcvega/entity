@@ -54,6 +54,7 @@ data SimpleQuery a = SimpleQuery
              , qLimit     :: Limit
              }
 
+
 defaultQuery :: SimpleQuery a
 defaultQuery = SimpleQuery ResultAll [] [] [] [] NoLimit
 

@@ -206,6 +206,8 @@ instance Convertible StoreVal UTCTime where
     safeConvert inp@(StoreByteString x) = case readMay (C.unpack x) of
         Just r -> return r
         Nothing -> convError "ByteString to UTCTime Error: " inp
+    safeConvert (StoreString x) = error "Error String!"
+    safeConvert (StoreLocalTime x) = error "Error LocalTime!"
 
 instance Convertible Day StoreVal where
     safeConvert = return . StoreDay

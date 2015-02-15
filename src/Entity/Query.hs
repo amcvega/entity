@@ -12,18 +12,37 @@ data Filter a where
                  => StoreField a b -> b -> Filter a
     RangeFilter :: (Storeable a, Convertible b StoreVal, Convertible b Double)
                    => StoreField a b -> b -> b -> Filter a
+    GreaterFilter :: (Storeable a, Convertible b StoreVal, Convertible b Double)
+                     => StoreField a b -> b -> Filter a
+    LesserFilter :: (Storeable a, Convertible b StoreVal, Convertible b Double)
+                     => StoreField a b -> b -> Filter a
     IncludeFilter :: (Storeable a, Convertible b StoreVal)
                      => StoreField a b -> [b] -> Filter a
 
 
-(.=) :: (Storeable a, Convertible b StoreVal)
+-- (.=) :: (Storeable a, Convertible b StoreVal)
+--         => StoreField a b -> b -> Filter a
+-- x .= y = Filter x y
+
+
+(%==%) :: (Storeable a, Convertible b StoreVal)
         => StoreField a b -> b -> Filter a
-x .= y = Filter x y
+x %==% y = Filter x y
+
+
+(%=) :: (Storeable a, Convertible b StoreVal)
+        => StoreField a b -> b -> Filter a
+x %= y = Filter x y
 
 
 (.?) :: (Storeable a, Convertible b StoreVal)
         => StoreField a b -> [b] -> Filter a
 x .? y = IncludeFilter x y
+
+
+(%=?) :: (Storeable a, Convertible b StoreVal)
+        => StoreField a b -> [b] -> Filter a
+x %=? y = IncludeFilter x y
 
 
 data Direction = Asc | Desc

@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleContexts, TypeFamilies
-           , RankNTypes, GADTs, DefaultSignatures
+           , GADTs, DefaultSignatures, ExistentialQuantification
            , GeneralizedNewtypeDeriving #-}
 
 module Entity.Core
@@ -9,7 +9,7 @@ module Entity.Core
        , FieldDef(..)
        , FieldList(..)
        , Sorted(..)
-       , storeLookup'
+       -- , storeLookup'
        , storeLookup
        , provide
        , fieldStore
@@ -57,8 +57,15 @@ newtype FieldList a = FieldList { fieldList :: [(Field a, StoreVal)] }
 class (Typeable a, MetaStore a) => Storeable a where
     data StoreField a typ
 
+
     fieldDef :: StoreField a typ -> FieldDef
+    fieldDef = fst . fieldPairs
+
     fieldAttr :: StoreField a typ -> (a -> typ)
+    fieldAttr = snd . fieldPairs
+
+    fieldPairs :: StoreField a typ -> (FieldDef, (a -> typ))
+    fieldPairs f = (fieldDef f, fieldAttr f)
 
     assemble :: Map.Map String StoreVal -> Maybe a
 
@@ -114,16 +121,24 @@ fieldStore = undefined
 
 
 -- | Wraper for StoreFields to allow them to be put into a list.
-data Field a where
-    Field :: (Eq b, Typeable b, Show b, Convertible b StoreVal)
-             => StoreField a b -> Field a
-    KeyField :: Field a
+-- data Field a where
+--     Field :: (Eq b, Show b, Convertible b StoreVal)
+--              => StoreField a b -> Field a
+--     KeyField :: Field a
+data Field a = forall b. (Eq b, Show b, Convertible b StoreVal)
+               => Field (StoreField a b)
+             | KeyField
 
-data Sorted a where
-    Sorted :: (Eq b
-              , Show b, Convertible b StoreVal
-              , Convertible b Double)
-             => StoreField a b -> Sorted a
+
+data Sorted a =
+    forall b. (Eq b, Show b, Convertible b StoreVal, Convertible b Double)
+    => Sorted (StoreField a b)
+
+-- data Sorted a where
+--     Sorted :: (Eq b
+--               , Show b, Convertible b StoreVal
+--               , Convertible b Double)p
+--              => StoreField a b -> Sorted a
 
 
 newtype FieldDef = FieldDef { fieldName :: String}
@@ -134,16 +149,16 @@ fieldOf = fieldName . fieldDef
 {-# INLINE fieldOf #-}
 
 -- |Use a String to lookup values from "db"
-storeLookup :: (Eq a, Convertible StoreVal b)
-               => a
-               -> [(a, StoreVal)] -> Maybe b
-storeLookup k xs = fromStore `fmap` lookup k xs
+-- storeLookup :: (Eq a, Convertible StoreVal b)
+--                => a
+--                -> [(a, StoreVal)] -> Maybe b
+-- storeLookup k xs = fromStore `fmap` lookup k xs
 
 
 -- |Use a StoreField to lookup values from "db"
-storeLookup' :: (Convertible StoreVal b, Storeable a)
+storeLookup :: (Convertible StoreVal b, Storeable a)
                 => StoreField a b -> Map.Map String StoreVal -> Maybe b
-storeLookup' k xs = fromStore `fmap` Map.lookup (fieldOf k) xs
+storeLookup k xs = fromStore `fmap` Map.lookup (fieldOf k) xs
 
 
 -- | Wrapper around storeLookup' functionality.  Provides default

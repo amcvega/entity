@@ -55,8 +55,8 @@ instance Convertible C.ByteString Bool where
         Just r -> return r
         Nothing -> convError "Bytestring to Bool Error" x
 
-instance Convertible C.ByteString T.Text where
-    safeConvert x = return $ decodeUtf8 x
+-- instance Convertible C.ByteString T.Text where
+--     safeConvert x = return $ decodeUtf8 x
 
 instance Convertible C.ByteString UTCTime where
     safeConvert x = case readMay (C.unpack x) of

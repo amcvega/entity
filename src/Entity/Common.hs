@@ -10,17 +10,17 @@ import Entity.StoreVal
 
 
 data CommonI a where
-    FindRecord :: (Storeable a) => Key a -> CommonI (Maybe (Entity a))
-    FindRecordsByIndex :: (Storeable a, Convertible val StoreVal)
+    FindRecord :: (Storable a) => Key a -> CommonI (Maybe (Entity a))
+    FindRecordsByIndex :: (Storable a, Convertible val StoreVal)
                           => StoreField a val -> val -> CommonI [Entity a]
-    CreateRecord :: (Storeable a) => a -> CommonI (Key a)
-    UpdateRecord :: (Storeable a) => Entity a -> Entity a -> CommonI (Entity a)
-    DeleteRecord :: (Storeable a) => Entity a -> CommonI ()
-    FindRecordsByIndices :: (Storeable a)
+    CreateRecord :: (Storable a) => a -> CommonI (Key a)
+    UpdateRecord :: (Storable a) => Entity a -> Entity a -> CommonI (Entity a)
+    DeleteRecord :: (Storable a) => Entity a -> CommonI ()
+    FindRecordsByIndices :: (Storable a)
                             => [Filter a] -> CommonI [Entity a]
-    FindInterUnion :: (Storeable a)
+    FindInterUnion :: (Storable a)
                       => [Filter a] -> [Filter a] -> CommonI [Entity a]
-    FilterQuery :: (Storeable a) => SimpleQuery a -> CommonI (QueryResult a)
-    FindRecordByUnique :: (Storeable a, Convertible val StoreVal)
+    FilterQuery :: (Storable a) => SimpleQuery a -> CommonI (QueryResult a)
+    FindRecordByUnique :: (Storable a, Convertible val StoreVal)
                           => StoreField a val
                           -> val -> CommonI (Maybe (Entity a))

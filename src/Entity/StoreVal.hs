@@ -7,11 +7,14 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Char8 as C
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
+import Data.Text (Text)
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder  as TLB
 import qualified Data.Text.Lazy.Encoding as TLE
 import Data.Aeson
 import Data.Aeson.Encode (encodeToTextBuilder)
+import Data.Decimal
+import Data.Either (partitionEithers)
 
 import Data.Convertible
 import Entity.Definition
@@ -23,7 +26,7 @@ import qualified Data.Text as T
 
 data StoreVal = StoreByteString B.ByteString
               | StoreInteger Integer
-              | StoreString String
+              -- | StoreString String
               | StoreText T.Text
               | StoreDouble Double
               | StoreInt Int
@@ -34,13 +37,14 @@ data StoreVal = StoreByteString B.ByteString
               | StoreDay Day
               | StoreList [StoreVal]
               | StoreJSON Value
+              | StoreDecimal Decimal
               | StoreNil
               deriving (Typeable, Eq)
 
 instance Show StoreVal where
     show (StoreByteString x) = show $ B.unpack x
     show (StoreInteger x)    = show x
-    show (StoreString x)     = x
+    -- show (StoreString x)     = x
     show (StoreDouble x)     = show x
     show (StoreInt x)        = show x
     show (StoreBool x)       = show x
@@ -50,6 +54,7 @@ instance Show StoreVal where
     show (StoreLocalTime x)  = show x
     show (StoreTimeZone x)   = show $ timeZoneMinutes x
     show (StoreJSON x)       = show x
+    show (StoreDecimal x)    = show x
     show StoreNil            = ""
 
 instance Convertible StoreVal B.ByteString where
@@ -57,7 +62,7 @@ instance Convertible StoreVal B.ByteString where
     safeConvert (StoreText x)       = return $ encodeUtf8 x
     safeConvert (StoreInteger x)    = return $ C.pack $ show x
     safeConvert (StoreInt x)        = return $ C.pack $ show x
-    safeConvert (StoreString x)     = return $ C.pack x
+    -- safeConvert (StoreString x)     = return $ C.pack x
     safeConvert (StoreDouble x)     = return $ C.pack $ show x
     safeConvert (StoreBool x)       = return $ C.pack $ show x
     safeConvert (StoreUTCTime x)    = return $ C.pack $ show x
@@ -69,6 +74,7 @@ instance Convertible StoreVal B.ByteString where
     safeConvert (StoreJSON x)       =
         return $ BL.toStrict $ TLE.encodeUtf8 $
         TLB.toLazyText $ encodeToTextBuilder  x
+    safeConvert (StoreDecimal x)    = return $ C.pack $ show x
     safeConvert StoreNil            = return ""
 
 
@@ -86,38 +92,49 @@ instance Convertible StoreVal Integer where
 instance Convertible Integer StoreVal where
     safeConvert = return . StoreInteger
 
-instance Convertible StoreVal String where
-    safeConvert (StoreString x)     = return x
-    safeConvert (StoreByteString x) = return $ C.unpack x
-    safeConvert (StoreInteger x)    = return $ show x
-    safeConvert (StoreDouble x)     = return $ show x
-    safeConvert (StoreInt x)        = return $ show x
-    safeConvert (StoreBool x)       = return $ show x
-    safeConvert (StoreText x)       = return $ T.unpack x
-    safeConvert (StoreDay x)        = return $ show x
-    safeConvert (StoreUTCTime x)    = return $ show x
-    safeConvert (StoreLocalTime x)  = return $ show x
-    safeConvert (StoreTimeZone x)   = return $ show $ timeZoneMinutes x
-    safeConvert (StoreJSON x)       =
-        return $ TL.unpack $ TLB.toLazyText $ encodeToTextBuilder x
-    safeConvert StoreNil            = return ""
+-- instance Convertible StoreVal String where
+--     safeConvert (StoreByteString x) = return $ C.unpack x
+--     safeConvert (StoreInteger x)    = return $ show x
+--     safeConvert (StoreDouble x)     = return $ show x
+--     safeConvert (StoreDecimal x )   = return $ show x
+--     safeConvert (StoreInt x)        = return $ show x
+--     safeConvert (StoreBool x)       = return $ show x
+--     safeConvert (StoreText x)       = return $ T.unpack x
+--     safeConvert (StoreDay x)        = return $ show x
+--     safeConvert (StoreUTCTime x)    = return $ show x
+--     safeConvert (StoreLocalTime x)  = return $ show x
+--     safeConvert (StoreTimeZone x)   = return $ show $ timeZoneMinutes x
+--     safeConvert (StoreJSON x)       =
+--         return $ TL.unpack $ TLB.toLazyText $ encodeToTextBuilder x
+--     safeConvert StoreNil            = return ""
 
 instance Convertible String StoreVal where
-    safeConvert = return . StoreString
+    safeConvert = return . StoreText . T.pack
 
 
 instance Convertible StoreVal T.Text where
     safeConvert (StoreText x)       = return x
     safeConvert (StoreByteString x) = return $ decodeUtf8 x
-    safeConvert (StoreString x)     = return $ T.pack x
+    safeConvert (StoreInteger x)    = return $ T.pack $ show x
+    safeConvert (StoreDouble x)     = return $ T.pack $ show x
+    safeConvert (StoreDecimal x )   = return $ T.pack $ show x
+    safeConvert (StoreInt x)        = return $ T.pack $ show x
+    safeConvert (StoreBool x)       = return $ T.pack $ show x
+    safeConvert (StoreText x)       = return $ x
+    safeConvert (StoreDay x)        = return $ T.pack $ show x
+    safeConvert (StoreUTCTime x)    = return $ T.pack $ show x
+    safeConvert (StoreLocalTime x)  = return $ T.pack $ show x
+    safeConvert (StoreTimeZone x)   = return $ T.pack $ show $ timeZoneMinutes x
     safeConvert (StoreJSON x)       =
         return $ TL.toStrict $ TLB.toLazyText $ encodeToTextBuilder x
+    safeConvert StoreNil            = return ""
 
 instance Convertible T.Text StoreVal where
     safeConvert = return . StoreText
 
 instance Convertible StoreVal Double where
     safeConvert (StoreDouble x) = return  x
+    safeConvert (StoreDecimal x) = return $ realToFrac x
     safeConvert (StoreInt x) = return $ fromRational $ toRational x
     safeConvert (StoreUTCTime x) =
         return $ fromRational $ toRational $ utcTimeToPOSIXSeconds x
@@ -130,6 +147,14 @@ instance Convertible StoreVal Double where
 
 instance Convertible Double StoreVal where
     safeConvert = return . StoreDouble
+
+instance Convertible Decimal StoreVal where
+    safeConvert = return . StoreDecimal
+
+instance Convertible StoreVal Decimal where
+    safeConvert (StoreDecimal x) = return x
+    safeConvert (StoreDouble x ) = return $ realToFrac x
+    safeConvert (StoreInt x) = return $ realToFrac x
 
 
 instance Convertible StoreVal Int where
@@ -148,15 +173,17 @@ instance Convertible Int StoreVal where
 instance (Convertible StoreVal a, Read a,
           Typeable a)
          => Convertible StoreVal (Maybe a) where
-    -- safeConvert x = case x of
-    --     StoreNil -> return Nothing
-    --     _ -> Just `fmap` safeConvert x
     safeConvert StoreNil = return Nothing
     safeConvert inp@(StoreByteString x) =
         if "" == x
         then return Nothing
         else Just `fmap` safeConvert inp -- return (readMay $ C.unpack x)
-    safeConvert (StoreText x) = return $ readMay $ T.unpack x -- Just `fmap` (encodeUtf8 x)
+    safeConvert inp@(StoreText x) =
+        if "" == x
+        then return Nothing
+        else Just `fmap` safeConvert inp -- return (readMay $ C.unpack x)
+    safeConvert inp@(StoreDecimal x) = Just `fmap` safeConvert inp
+    safeConvert inp@(StoreDouble x) = Just `fmap` safeConvert inp
     safeConvert (StoreInt x) =
         return $ readMay $ show x
     safeConvert inp@(StoreDay x) = Just `fmap` safeConvert inp
@@ -171,7 +198,7 @@ instance (Convertible a StoreVal) => Convertible (Maybe a) StoreVal where
 
 instance (Typeable a) => Convertible StoreVal (Key a) where
     safeConvert (StoreInt x)    = return $ Key x
-    safeConvert (StoreString x) = return $ Key $ read x
+    -- safeConvert (StoreString x) = return $ Key $ read x
     safeConvert (StoreText x)   = return $ Key $ read $ T.unpack x
     safeConvert inp@(StoreByteString x) = case readMay $ C.unpack x of
         Just r -> return $ Key r
@@ -188,10 +215,10 @@ instance Convertible Bool StoreVal where
 
 instance Convertible StoreVal Bool where
     safeConvert (StoreBool x) = return x
-    safeConvert inp@(StoreString x) =
-        case readMay x of
-            Just r -> return r
-            Nothing -> convError "Conversion StoreVal to Bool Error" inp
+    -- safeConvert inp@(StoreString x) =
+    --     case readMay x of
+    --         Just r -> return r
+    --         Nothing -> convError "Conversion StoreVal to Bool Error" inp
     safeConvert inp@(StoreByteString x) =
         case readMay (C.unpack x) of
             Just r -> return r
@@ -206,7 +233,7 @@ instance Convertible StoreVal UTCTime where
     safeConvert inp@(StoreByteString x) = case readMay (C.unpack x) of
         Just r -> return r
         Nothing -> convError "ByteString to UTCTime Error: " inp
-    safeConvert (StoreString _) = error "Error String!"
+    -- safeConvert (StoreString _) = error "Error String!"
     safeConvert (StoreLocalTime _) = error "Error LocalTime!"
 
 instance Convertible Day StoreVal where
@@ -244,6 +271,26 @@ instance Convertible StoreVal LocalTime where
         Nothing -> convError "ByteString to LocalTime Error: " inp
 
 
+instance Convertible [Text] StoreVal where
+    safeConvert xs = return $ StoreList $ map StoreText xs
+    -- safeConvert xs = case partitionEithers (map StoreText xs) of
+    --                   ([],xs) -> return $ StoreList xs
+    --                   (es,_) -> convError ("Errors: " ++ show es) xs
+
+
+instance (Typeable a, Convertible StoreVal a) => Convertible StoreVal [a] where
+    safeConvert inp@(StoreList xs) =
+        case partitionEithers (map safeConvert xs) of
+         ([],xs) -> return xs
+         (es,_) -> convError ("Errors: " ++ show es) inp
+
+-- instance Typeable a => Convertible StoreVal [Key a] where
+--     safeConvert (StoreList xs) = return $ map (Key . fromStore) xs
+--     safeConvert inp@(StoreByteString x) = case readMay (C.unpack x) of
+--         Just r -> return $ map Key r
+--         Nothing -> convError "ByteString to [Key a] Error" inp
+
+
 instance Convertible (Key a) StoreVal => Convertible [Key a] StoreVal where
     safeConvert xs = return $ StoreList $ map toStore xs
 
@@ -260,11 +307,6 @@ instance Convertible StoreVal Value where
             Nothing -> convError "Couldn't convert Bytestring to JSON values" x
 
 
-instance Typeable a => Convertible StoreVal [Key a] where
-    safeConvert (StoreList xs) = return $ map (Key . fromStore) xs
-    safeConvert inp@(StoreByteString x) = case readMay (C.unpack x) of
-        Just r -> return $ map Key r
-        Nothing -> convError "ByteString to [Key a] Error" inp
 
 
 instance Convertible T.Text Bool where

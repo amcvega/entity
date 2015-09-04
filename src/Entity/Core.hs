@@ -3,7 +3,7 @@
            , GeneralizedNewtypeDeriving #-}
 
 module Entity.Core
-       ( Storeable(..)
+       ( Storable(..)
        , MetaStore(..)
        , Field(..)
        , FieldDef(..)
@@ -22,6 +22,8 @@ module Entity.Core
        )
        where
 
+import Control.Arrow ((&&&))
+
 import Data.Monoid
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -37,7 +39,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Map.Strict as Map
 
 
-toEntity :: (Storeable a) => Int -> a -> Entity a
+toEntity :: (Storable a) => Int -> a -> Entity a
 toEntity kid record = Entity (Key kid) record
 
 
@@ -54,18 +56,19 @@ newtype FieldList a = FieldList { fieldList :: [(Field a, StoreVal)] }
                       deriving (Monoid)
 
 
-class (Typeable a, MetaStore a) => Storeable a where
+class (Typeable a, MetaStore a) => Storable a where
     data StoreField a typ
 
 
+
     fieldDef :: StoreField a typ -> FieldDef
-    fieldDef = fst . fieldPairs
+    fieldDef = FieldDef . fst . fieldPairs
 
     fieldAttr :: StoreField a typ -> (a -> typ)
     fieldAttr = snd . fieldPairs
 
-    fieldPairs :: StoreField a typ -> (FieldDef, (a -> typ))
-    fieldPairs f = (fieldDef f, fieldAttr f)
+    fieldPairs :: StoreField a typ -> (String, (a -> typ))
+    fieldPairs = (fieldName . fieldDef) &&& fieldAttr
 
     assemble :: Map.Map String StoreVal -> Maybe a
 
@@ -98,25 +101,26 @@ class (Typeable a, MetaStore a) => Storeable a where
         where genvals fld@(Field name) = (fld, toStore $ fieldAttr name f)
 
 
-    listToStoreable :: [(String, StoreVal)] -> Either String a
-    listToStoreable xs = case assemble (Map.fromList xs) of
+    listToStorable :: [(String, StoreVal)] -> Either String a
+    listToStorable xs = case assemble (Map.fromList xs) of
         Just f -> Right f
         Nothing -> Left $ "Missing Fields: " ++ show xs
 
+
     -- | Try to convert a list of storevals into a record. can fail.
-    -- listToStoreable :: [(String, StoreVal)] -> Either String a
-    -- listToStoreable xs = case assemble xs of
+    -- listToStorable :: [(String, StoreVal)] -> Either String a
+    -- listToStorable xs = case assemble xs of
     --     Just f -> Right f
     --     Nothing -> Left "Missing Fields"
 
 
-sortedIndexVals :: Storeable a => a -> [(String, StoreVal)]
+sortedIndexVals :: Storable a => a -> [(String, StoreVal)]
 sortedIndexVals f = map genvals $ sorted f
     where genvals (Sorted name) = (fieldOf name, toStore $ fieldAttr name f)
 
 
 -- | Trick to return the type of the  store of a storefield
-fieldStore :: Storeable a => StoreField a b -> a
+fieldStore :: Storable a => StoreField a b -> a
 fieldStore = undefined
 
 
@@ -128,6 +132,7 @@ fieldStore = undefined
 data Field a = forall b. (Eq b, Show b, Convertible b StoreVal)
                => Field (StoreField a b)
              | KeyField
+
 
 
 data Sorted a =
@@ -142,9 +147,11 @@ data Sorted a =
 
 
 newtype FieldDef = FieldDef { fieldName :: String}
+                 deriving (Ord, Eq)
+
 
 -- | convenience function to translate StoreField to string
-fieldOf :: (Storeable a) => StoreField a b -> String
+fieldOf :: (Storable a) => StoreField a b -> String
 fieldOf = fieldName . fieldDef
 {-# INLINE fieldOf #-}
 
@@ -156,7 +163,7 @@ fieldOf = fieldName . fieldDef
 
 
 -- |Use a StoreField to lookup values from "db"
-storeLookup :: (Convertible StoreVal b, Storeable a)
+storeLookup :: (Convertible StoreVal b, Storable a)
                 => StoreField a b -> Map.Map String StoreVal -> Maybe b
 storeLookup k xs = fromStore `fmap` Map.lookup (fieldOf k) xs
 
@@ -165,13 +172,13 @@ storeLookup k xs = fromStore `fmap` Map.lookup (fieldOf k) xs
 --   value if lookup for a particular field fails (doesn't exist in db)
 provide :: (Convertible StoreVal b
            -- , Convertible ByteString b
-           , Storeable a, Typeable b)
+           , Storable a, Typeable b)
            => b -> StoreField a b -> Map.Map String StoreVal -> Maybe b
 provide def sf xs =
     maybe (Just def) Just (fromStore `fmap` Map.lookup (fieldOf sf) xs)
 
 
-listNewFields :: Storeable a => a -> [(String, Text)]
+listNewFields :: Storable a => a -> [(String, Text)]
 listNewFields record = foldr appendField [] (storeFields record)
     where
         appendField (Field field) acc =
@@ -179,7 +186,7 @@ listNewFields record = foldr appendField [] (storeFields record)
             (fieldOf field, T.pack (show val)) : acc
 
 
-listChanges :: (Storeable a) => a -> a -> [(String, Text, Text)]
+listChanges :: (Storable a) => a -> a -> [(String, Text, Text)]
 listChanges old new = foldr appendDifference [] (storeFields old)
     where
         appendDifference (Field field) acc =

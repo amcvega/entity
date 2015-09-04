@@ -6,6 +6,8 @@ env.sh
 *.hi
 *.o
 *.sqlite3
+*.dyn_o
+*.dyn_hi
 dist/
 cabal-dev/
 .hsenv*

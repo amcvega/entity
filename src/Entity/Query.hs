@@ -8,39 +8,42 @@ import Entity.Core
 
 
 data Filter a where
-    Filter :: (Storeable a, Convertible b StoreVal)
+    Filter :: (Storable a, Convertible b StoreVal)
                  => StoreField a b -> b -> Filter a
-    RangeFilter :: (Storeable a, Convertible b StoreVal, Convertible b Double)
+    RangeFilter :: (Storable a, Convertible b StoreVal, Convertible b Double)
                    => StoreField a b -> b -> b -> Filter a
-    GreaterFilter :: (Storeable a, Convertible b StoreVal, Convertible b Double)
+    GreaterFilter :: (Storable a, Convertible b StoreVal, Convertible b Double)
                      => StoreField a b -> b -> Filter a
-    LesserFilter :: (Storeable a, Convertible b StoreVal, Convertible b Double)
+    LesserFilter :: (Storable a, Convertible b StoreVal, Convertible b Double)
                      => StoreField a b -> b -> Filter a
-    IncludeFilter :: (Storeable a, Convertible b StoreVal)
+    IncludeFilter :: (Storable a, Convertible b StoreVal)
                      => StoreField a b -> [b] -> Filter a
+    NullFilter :: (Storable a, Convertible b StoreVal)
+                 => StoreField a b -> Filter a
+    KeyFilter :: [Key a] -> Filter a
 
 
--- (.=) :: (Storeable a, Convertible b StoreVal)
+-- (.=) :: (Storable a, Convertible b StoreVal)
 --         => StoreField a b -> b -> Filter a
 -- x .= y = Filter x y
 
 
-(%==%) :: (Storeable a, Convertible b StoreVal)
+(%==%) :: (Storable a, Convertible b StoreVal)
         => StoreField a b -> b -> Filter a
 x %==% y = Filter x y
 
 
-(%=) :: (Storeable a, Convertible b StoreVal)
+(%=) :: (Storable a, Convertible b StoreVal)
         => StoreField a b -> b -> Filter a
 x %= y = Filter x y
 
 
-(.?) :: (Storeable a, Convertible b StoreVal)
+(.?) :: (Storable a, Convertible b StoreVal)
         => StoreField a b -> [b] -> Filter a
 x .? y = IncludeFilter x y
 
 
-(%=?) :: (Storeable a, Convertible b StoreVal)
+(%=?) :: (Storable a, Convertible b StoreVal)
         => StoreField a b -> [b] -> Filter a
 x %=? y = IncludeFilter x y
 
@@ -54,7 +57,7 @@ data Limit = Limit Offset LimitQty
            | NoLimit
 
 data Sort a where
-    Sort :: (Storeable a, Convertible b StoreVal)
+    Sort :: (Storable a, Convertible b StoreVal)
             => Direction -> StoreField a b -> Sort a
 
 
@@ -79,6 +82,15 @@ defaultQuery = SimpleQuery ResultAll [] [] [] [] NoLimit
 
 query :: SimpleQuery a
 query = defaultQuery
+
+mergeQuery :: SimpleQuery a -> SimpleQuery a -> SimpleQuery a
+mergeQuery old new = old { qInt = (qInt old) ++ (qInt new)
+                         , qUnion = (qUnion old) ++ (qUnion new)
+                         , qResult = qResult new
+                         , qNot = qNot old ++ qNot new
+                         , qSort = qSort old ++ qSort new
+                         , qLimit = qLimit new
+                         }
 
 querySubject :: SimpleQuery a -> a
 querySubject = undefined
